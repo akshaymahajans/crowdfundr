@@ -107,7 +107,7 @@ contract Project is Ownable, ERC721 {
         activeProject = false;
     }
 
-    function refund(address _caller) public onlyIfProjectFailed returns (bool) {
+    function refund(address _caller) public onlyIfProjectFailed  (bool) {
         require(contributions[_caller] > 0);
         uint256 refundAmount = contributions[_caller];
         contributions[_caller] = 0;
