@@ -1,8 +1,9 @@
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract ProjectFactory {
     mapping(address => Project[]) public projects;
@@ -21,7 +22,7 @@ contract Project is Ownable, ERC721 {
     Counters.Counter private _tokenIds;
     uint256 public startTime;
     uint256 public totalContributed;
-    uint256 public projectGoal;
+    uint256 private projectGoal;
     mapping(address => uint256) public contributions;
     mapping(address => uint256) public nftsDisbursed;
     address public creator;
@@ -30,7 +31,7 @@ contract Project is Ownable, ERC721 {
     
 
     modifier onlyActiveProject() {
-        require(block.timestamp <= startTime + (30 days));
+        require(block.timestamp <= startTime + (30 days) + 900 seconds);
         require(activeProject);
         _;
     }
@@ -64,6 +65,7 @@ contract Project is Ownable, ERC721 {
         return newItemId;
     }
     function contribute() public payable onlyActiveProject {
+        require(totalContributed + msg.value >= msg.value);
         require(msg.value > .01 ether);
         require(goalSatisfied == false);
         totalContributed += msg.value;
@@ -71,16 +73,12 @@ contract Project is Ownable, ERC721 {
             goalSatisfied = true;
         }
         contributions[msg.sender] += msg.value;
-
-        if (
-            ((contributions[msg.sender] / (1 ether)) -
-                nftsDisbursed[msg.sender]) > 0
-        ) {
+        uint nftsToDisburse = (contributions[msg.sender] / (1 ether)) - nftsDisbursed[msg.sender];
+        
+        if (nftsToDisburse > 0) {
             for (
                 uint256 i = 0;
-                i <
-                (contributions[msg.sender] / (1 ether)) -
-                    nftsDisbursed[msg.sender];
+                i < nftsToDisburse;
                 i++
             ) {
                 mintNFT(msg.sender);
@@ -105,8 +103,7 @@ contract Project is Ownable, ERC721 {
         return sent;
     }
 
-    function closeProject() public onlyOwner onlyIfGoalReached {
-        //add in logic to set inactivie and set to close
+    function closeProject()  public onlyOwner {
         activeProject = false;
     }
 
@@ -117,5 +114,12 @@ contract Project is Ownable, ERC721 {
         (bool refunded, ) = _caller.call{value: (refundAmount * 1 ether)}("");
 
         return refunded;
+    }
+    receive() external payable  {
+        revert("");
+    }
+
+    fallback() external payable {
+        revert();
     }
 }
